@@ -1,43 +1,38 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme, View } from 'react-native'; // View unused
 import { lightTheme, darkTheme } from '../utils/theme';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    const [isDark, setIsDark] = useState(false);
-    const theme = isDark ? darkTheme : lightTheme;
+    // const sysScheme = useColorScheme();
+    // defaulting to light for now, maybe change later
+    const [mode, setMode] = useState('light');
 
     useEffect(() => {
-        loadTheme();
+        // console.log('Theme provider mounted');
+        // TODO: check system preference
     }, []);
 
-    const loadTheme = async () => {
-        try {
-            const savedTheme = await AsyncStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                setIsDark(true);
-            }
-        } catch (e) {
-            console.log('Failed to load theme');
-        }
+    const switchTheme = () => {
+        setMode(prev => (prev === 'light' ? 'dark' : 'light'));
+        // console.log('Theme switched to', mode === 'light' ? 'dark' : 'light');
     };
 
-    const toggleTheme = async () => {
-        try {
-            const newMode = !isDark;
-            setIsDark(newMode);
-            await AsyncStorage.setItem('theme', newMode ? 'dark' : 'light');
-        } catch (e) {
-            console.log('Failed to save theme');
-        }
-    };
+    const theme = mode === 'dark' ? darkTheme : lightTheme;
 
     return (
-        <ThemeContext.Provider value={{ theme, isDark, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme, isDark: mode === 'dark', toggleTheme: switchTheme }}>
             {children}
         </ThemeContext.Provider>
     );
 };
 
-export const useTheme = () => useContext(ThemeContext);
+// custom hook
+export const useTheme = () => {
+    const context = useContext(ThemeContext);
+    if (!context) {
+        throw new Error("useTheme must be used within a ThemeProvider");
+    }
+    return context;
+};

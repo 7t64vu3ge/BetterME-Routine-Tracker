@@ -1,22 +1,21 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_betterme';
-
 module.exports = function (req, res, next) {
-    // Get token from header
+    // get token from header
     const token = req.header('x-auth-token');
 
-    // Check if not token
+    // check if no token
     if (!token) {
-        return res.status(401).json({ message: 'No token, authorization denied' });
+        return res.status(401).json({ msg: 'No token, authorization denied' });
     }
 
-    // Verify token
+    // verify
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded.user;
+        const secret = process.env.JWT_SECRET || 'betterme_dev_secret';
+        const decoded = jwt.verify(token, secret);
+        req.user = decoded;
         next();
-    } catch (err) {
-        res.status(401).json({ message: 'Token is not valid' });
+    } catch (e) {
+        res.status(401).json({ msg: 'Token is not valid' });
     }
 };

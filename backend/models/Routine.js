@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const routineSchema = new mongoose.Schema({
+const RoutineSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -8,8 +8,7 @@ const routineSchema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: true,
-        trim: true
+        required: true
     },
     habits: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -21,4 +20,4 @@ const routineSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Routine', routineSchema);
+module.exports = mongoose.model('Routine', RoutineSchema);

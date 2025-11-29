@@ -1,85 +1,105 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
+// TODO: Move this to a constants file later
+const MIN_PASS_LENGTH = 6;
+
 const SignUpScreen = ({ navigation }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    // State for form fields
+    const [name, setName] = useState('');
+    const [pwd, setPwd] = useState('');
+    const [pwd2, setPwd2] = useState('');
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [err, setErr] = useState('');
 
     const { signUp } = useAuth();
     const { theme } = useTheme();
 
-    const handleSignUp = async () => {
-        if (!username || !password || !confirmPassword) {
-            setError('Please fill in all fields');
+    // Clear error when user types
+    useEffect(() => {
+        if (err) setErr('');
+    }, [name, pwd, pwd2]);
+
+    const onSignUpPress = async () => {
+        // console.log('Sign up pressed', name); 
+
+        // basic checks
+        if (!name || !pwd || !pwd2) {
+            setErr('Hey, you missed some fields!');
             return;
         }
 
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
+        if (pwd !== pwd2) {
+            setErr('Passwords don\'t match, please check.');
             return;
         }
 
-        if (password.length < 6) {
-            setError('Password must be at least 6 characters');
+        if (pwd.length < MIN_PASS_LENGTH) {
+            setErr(`Password needs to be at least ${MIN_PASS_LENGTH} chars.`);
             return;
         }
 
-        setLoading(true);
-        setError('');
+        setIsLoading(true);
 
         try {
-            await signUp(username, password);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to sign up');
+            await signUp(name, pwd);
+            // navigation.navigate('Home'); // handled in context?
+        } catch (e) {
+            console.log("Signup error: ", e);
+            setErr(e.response?.data?.message || 'Something went wrong. Try again.');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[styles.container, { backgroundColor: theme.background }]}
+            style={{ flex: 1, backgroundColor: theme.background }}
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={styles.inner}>
-                    <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
-                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Sign up to get started</Text>
+                <View style={styles.mainContainer}>
+                    <Text style={[styles.headerText, { color: theme.text }]}>Create Account</Text>
+                    <Text style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 30 }}>
+                        Sign up to get started
+                    </Text>
 
-                    {error ? <Text style={[styles.error, { color: theme.error }]}>{error}</Text> : null}
+                    {err ? (
+                        <Text style={{ color: theme.error, marginBottom: 15, textAlign: 'center' }}>
+                            {err}
+                        </Text>
+                    ) : null}
 
                     <Input
                         label="Username"
-                        value={username}
-                        onChangeText={setUsername}
+                        value={name}
+                        onChangeText={setName}
                         autoCapitalize="none"
                     />
 
                     <Input
                         label="Password"
-                        value={password}
-                        onChangeText={setPassword}
+                        value={pwd}
+                        onChangeText={setPwd}
                         secureTextEntry
                     />
 
                     <Input
                         label="Confirm Password"
-                        value={confirmPassword}
-                        onChangeText={setConfirmPassword}
+                        value={pwd2}
+                        onChangeText={setPwd2}
                         secureTextEntry
                     />
 
                     <Button
                         title="Sign Up"
-                        onPress={handleSignUp}
-                        loading={loading}
+                        onPress={onSignUpPress}
+                        loading={isLoading}
                         style={{ marginTop: 20 }}
                     />
 
@@ -96,27 +116,16 @@ const SignUpScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    inner: {
+    mainContainer: {
         flex: 1,
         justifyContent: 'center',
-        padding: 24,
+        padding: 24
     },
-    title: {
+    headerText: {
         fontSize: 32,
         fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        marginBottom: 32,
-    },
-    error: {
-        marginBottom: 16,
-        textAlign: 'center',
-    },
+        marginBottom: 8
+    }
 });
 
 export default SignUpScreen;

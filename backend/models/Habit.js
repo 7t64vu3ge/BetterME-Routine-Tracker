@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
-const habitSchema = new mongoose.Schema({
+
+const HabitSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -8,17 +9,16 @@ const habitSchema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: true,
-        trim: true
+        required: [true, 'Please add a name'] // custom error msg
     },
     category: {
         type: String,
-        enum: ['Health', 'Study', 'Work', 'Personal'],
+        enum: ['Health', 'Work', 'Study', 'Personal', 'Other'],
         default: 'Personal'
     },
     targetType: {
         type: String,
-        enum: ['time', 'count'],
+        enum: ['count', 'time'],
         default: 'count'
     },
     targetValue: {
@@ -35,4 +35,4 @@ const habitSchema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Habit', habitSchema);
+module.exports = mongoose.model('Habit', HabitSchema);

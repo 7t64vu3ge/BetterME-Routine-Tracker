@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const habitLogSchema = new mongoose.Schema({
+const LogSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -12,7 +12,7 @@ const habitLogSchema = new mongoose.Schema({
         required: true
     },
     date: {
-        type: String, // Format: YYYY-MM-DD
+        type: String, // YYYY-MM-DD
         required: true
     },
     completed: {
@@ -23,13 +23,10 @@ const habitLogSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    note: {
-        type: String,
-        trim: true
-    }
+    notes: String
 });
 
-// Compound index to ensure one log per habit per day
-habitLogSchema.index({ habit: 1, date: 1 }, { unique: true });
+// compound index to ensure one log per habit per day
+LogSchema.index({ habit: 1, date: 1 }, { unique: true });
 
-module.exports = mongoose.model('HabitLog', habitLogSchema);
+module.exports = mongoose.model('HabitLog', LogSchema);

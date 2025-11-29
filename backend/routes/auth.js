@@ -1,93 +1,97 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const authMiddleware = require('../middleware/auth');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_betterme';
+// TODO: Move secret to config file properly later
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// @route   POST /api/auth/signup
-// @desc    Register a new user
-// @access  Public
+// Register a new user
 router.post('/signup', async (req, res) => {
-    try {
-        const { username, password } = req.body;
+    const { username, password } = req.body;
 
-        // Check if user already exists
-        let user = await User.findOne({ username });
-        if (user) {
-            return res.status(400).json({ message: 'User already exists' });
+    // quick validation
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Missing fields' });
+    }
+
+    try {
+        // check if taken
+        const existingUser = await User.findOne({ username });
+        if (existingUser) {
+            return res.status(400).json({ message: 'Username taken' });
         }
 
-        // Create new user
-        user = new User({
-            username,
-            password
+        const newUser = new User({ username, password });
+
+        // password hashing is handled in the model pre-save now
+        // await newUser.hashPassword(); 
+
+        await newUser.save();
+
+        // generate token
+        const token = jwt.sign({ id: newUser.id }, JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({
+            token,
+            user: {
+                id: newUser.id,
+                username: newUser.username
+            }
         });
 
-        await user.save();
-
-        // Create JWT payload
-        const payload = {
-            user: {
-                id: user.id
-            }
-        };
-
-        // Sign token
-        jwt.sign(
-            payload,
-            JWT_SECRET,
-            { expiresIn: '7d' },
-            (err, token) => {
-                if (err) throw err;
-                res.status(201).json({ token, user: { id: user.id, username: user.username } });
-            }
-        );
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        console.error("Signup Error:", err);
+        res.status(500).json({ message: 'Something went wrong during signup' });
     }
 });
 
-// @route   POST /api/auth/signin
-// @desc    Authenticate user & get token
-// @access  Public
+// Login
 router.post('/signin', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Enter username and password' });
+    }
+
     try {
-        const { username, password } = req.body;
+        const user = await User.findOne({ username });
+        if (!user) return res.status(400).json({ message: 'User not found' });
 
-        // Check if user exists
-        let user = await User.findOne({ username });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid Credentials' });
-        }
+        // verify pass
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: 'Bad credentials' });
 
-        // Validate password
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid Credentials' });
-        }
-
-        // Create JWT payload
-        const payload = {
-            user: {
-                id: user.id
-            }
-        };
-
-        // Sign token
-        jwt.sign(
-            payload,
+        const token = jwt.sign(
+            { id: user.id },
             JWT_SECRET,
-            { expiresIn: '7d' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({ token, user: { id: user.id, username: user.username } });
-            }
+            { expiresIn: '7d' }
         );
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                username: user.username
+            }
+        });
+
+    } catch (e) {
+        // console.log(e);
+        res.status(500).json({ message: 'Login failed' });
+    }
+});
+
+// Get current user info
+router.get('/user', authMiddleware, async (req, res) => {
+    try {
+        const currentUser = await User.findById(req.user.id).select('-password');
+        if (!currentUser) return res.status(404).json({ message: 'User gone?' });
+        res.json(currentUser);
+    } catch (e) {
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

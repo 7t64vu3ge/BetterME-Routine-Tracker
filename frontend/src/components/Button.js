@@ -1,46 +1,52 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
 const Button = ({ title, onPress, loading, type = 'primary', style }) => {
     const { theme } = useTheme();
 
-    const backgroundColor = type === 'primary' ? theme.primary : 'transparent';
-    const textColor = type === 'primary' ? '#FFFFFF' : theme.primary;
-    const borderColor = type === 'outline' ? theme.primary : 'transparent';
+    const isOutline = type === 'outline';
+    const isText = type === 'text';
+
+    // base styles
+    const bg = isOutline || isText ? 'transparent' : theme.primary;
+    const border = isOutline ? theme.primary : 'transparent';
+    const txtColor = isOutline || isText ? theme.primary : '#FFF';
 
     return (
         <TouchableOpacity
             style={[
-                styles.button,
-                { backgroundColor, borderColor, borderWidth: type === 'outline' ? 1 : 0 },
+                styles.btn,
+                {
+                    backgroundColor: bg,
+                    borderColor: border,
+                    borderWidth: isOutline ? 1 : 0,
+                    // hack to center text
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                },
                 style
             ]}
             onPress={onPress}
             disabled={loading}
         >
             {loading ? (
-                <ActivityIndicator color={textColor} />
+                <ActivityIndicator color={txtColor} />
             ) : (
-                <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+                <Text style={{ color: txtColor, fontSize: 16, fontWeight: '600' }}>
+                    {title}
+                </Text>
             )}
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
-    button: {
-        height: 48,
+    btn: {
+        padding: 12,
         borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        marginVertical: 8,
-    },
-    text: {
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
+        minHeight: 48
+    }
 });
 
 export default Button;

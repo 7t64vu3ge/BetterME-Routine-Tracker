@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -7,109 +7,114 @@ import client from '../../api/client';
 
 const AddRoutineScreen = ({ navigation }) => {
     const { theme } = useTheme();
+
     const [name, setName] = useState('');
-    const [habits, setHabits] = useState([]);
-    const [selectedHabits, setSelectedHabits] = useState([]);
+    const [allHabits, setAllHabits] = useState([]);
+    const [selected, setSelected] = useState([]);
+
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [err, setErr] = useState('');
 
     useEffect(() => {
-        fetchHabits();
+        // load habits on mount
+        const load = async () => {
+            try {
+                const res = await client.get('/habits');
+                setAllHabits(res.data);
+            } catch (e) {
+                console.log(e);
+            }
+        };
+        load();
     }, []);
 
-    const fetchHabits = async () => {
-        try {
-            const res = await client.get('/habits');
-            setHabits(res.data);
-        } catch (err) {
-            console.log(err);
-        }
-    };
-
-    const toggleHabit = (id) => {
-        if (selectedHabits.includes(id)) {
-            setSelectedHabits(selectedHabits.filter(h => h !== id));
+    const toggle = (id) => {
+        if (selected.includes(id)) {
+            setSelected(selected.filter(x => x !== id));
         } else {
-            setSelectedHabits([...selectedHabits, id]);
+            setSelected([...selected, id]);
         }
     };
 
-    const handleCreate = async () => {
+    const create = async () => {
         if (!name) {
-            setError('Please enter a routine name');
+            setErr('Name missing');
             return;
         }
 
-        if (selectedHabits.length === 0) {
-            setError('Please select at least one habit');
+        if (selected.length === 0) {
+            setErr('Pick at least one habit');
             return;
         }
 
         setLoading(true);
-        setError('');
+        setErr('');
 
         try {
             await client.post('/routines', {
                 name,
-                habits: selectedHabits
+                habits: selected
             });
             navigation.goBack();
-        } catch (err) {
-            setError('Failed to create routine');
-            console.log(err);
+        } catch (e) {
+            setErr('Failed to create');
+            console.log(e);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={[styles.header, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.title, { color: theme.text }]}>New Routine</Text>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+            <View style={styles.head}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.text }}>New Routine</Text>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Text style={{ color: theme.primary, fontSize: 16 }}>Cancel</Text>
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.content}>
-                {error ? <Text style={[styles.error, { color: theme.error }]}>{error}</Text> : null}
+            <View style={{ padding: 16, flex: 1 }}>
+                {err ? <Text style={{ color: theme.error, textAlign: 'center', marginBottom: 10 }}>{err}</Text> : null}
 
                 <Input
-                    label="Routine Name"
+                    label="Name"
                     value={name}
                     onChangeText={setName}
                     placeholder="e.g., Morning Routine"
                 />
 
-                <Text style={[styles.label, { color: theme.text }]}>Select Habits</Text>
+                <Text style={{ marginBottom: 10, fontWeight: '600', color: theme.text }}>Habits</Text>
+
                 <FlatList
-                    data={habits}
+                    data={allHabits}
                     keyExtractor={item => item._id}
-                    style={styles.list}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={[
-                                styles.habitItem,
-                                {
-                                    backgroundColor: theme.surface,
-                                    borderColor: selectedHabits.includes(item._id) ? theme.primary : theme.border
-                                }
-                            ]}
-                            onPress={() => toggleHabit(item._id)}
-                        >
-                            <Text style={{ color: theme.text }}>{item.name}</Text>
-                            {selectedHabits.includes(item._id) && (
-                                <View style={[styles.check, { backgroundColor: theme.primary }]} />
-                            )}
-                        </TouchableOpacity>
-                    )}
+                    style={{ flex: 1, marginBottom: 20 }}
+                    renderItem={({ item }) => {
+                        const isSelected = selected.includes(item._id);
+                        return (
+                            <TouchableOpacity
+                                style={[
+                                    styles.item,
+                                    {
+                                        backgroundColor: theme.surface,
+                                        borderColor: isSelected ? theme.primary : theme.border
+                                    }
+                                ]}
+                                onPress={() => toggle(item._id)}
+                            >
+                                <Text style={{ color: theme.text }}>{item.name}</Text>
+                                {isSelected && (
+                                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: theme.primary }} />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    }}
                 />
 
                 <Button
-                    title="Create Routine"
-                    onPress={handleCreate}
+                    title="Create"
+                    onPress={create}
                     loading={loading}
-                    style={{ marginTop: 20 }}
                 />
             </View>
         </View>
@@ -117,34 +122,15 @@ const AddRoutineScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
+    head: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
+        borderBottomColor: '#eee'
     },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    content: {
-        padding: 16,
-        flex: 1,
-    },
-    label: {
-        marginBottom: 8,
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    list: {
-        flex: 1,
-        marginBottom: 20,
-    },
-    habitItem: {
+    item: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -152,16 +138,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         marginBottom: 8,
-    },
-    check: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-    },
-    error: {
-        marginBottom: 16,
-        textAlign: 'center',
-    },
+    }
 });
 
 export default AddRoutineScreen;

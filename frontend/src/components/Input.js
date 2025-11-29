@@ -1,51 +1,48 @@
 import React from 'react';
-import { TextInput, View, Text, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 
-const Input = ({ label, error, ...props }) => {
+const Input = ({ label, value, onChangeText, placeholder, secureTextEntry, keyboardType, autoCapitalize }) => {
     const { theme } = useTheme();
 
     return (
-        <View style={styles.container}>
-            {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>}
+        <View style={{ marginBottom: 16 }}>
+            {label && <Text style={[styles.lbl, { color: theme.text }]}>{label}</Text>}
+
             <TextInput
                 style={[
                     styles.input,
                     {
                         backgroundColor: theme.surface,
-                        color: theme.text,
-                        borderColor: error ? theme.error : theme.border
+                        borderColor: theme.border,
+                        color: theme.text
                     }
                 ]}
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
                 placeholderTextColor={theme.textSecondary}
-                {...props}
+                secureTextEntry={secureTextEntry}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
             />
-            {error && <Text style={[styles.error, { color: theme.error }]}>{error}</Text>}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        marginBottom: 16,
-        width: '100%',
-    },
-    label: {
+    lbl: {
         marginBottom: 8,
         fontSize: 14,
         fontWeight: '600',
     },
     input: {
         height: 48,
-        borderRadius: 8,
         borderWidth: 1,
+        borderRadius: 8,
         paddingHorizontal: 16,
         fontSize: 16,
-    },
-    error: {
-        marginTop: 4,
-        fontSize: 12,
-    },
+    }
 });
 
 export default Input;

@@ -6,71 +6,61 @@ const Habit = require('./models/Habit');
 const Routine = require('./models/Routine');
 const HabitLog = require('./models/HabitLog');
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const db = process.env.MONGODB_URI;
 
-const createTestUser = async () => {
+const run = async () => {
     try {
-        await mongoose.connect(MONGODB_URI);
-        console.log('MongoDB connected');
+        await mongoose.connect(db);
+        console.log('Connected to DB');
 
-        const username = 'testuser';
-        const password = 'password123';
+        const usr = 'testuser';
+        const pwd = 'password123';
 
-        // Cleanup existing testuser
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            await Habit.deleteMany({ user: existingUser._id });
-            await Routine.deleteMany({ user: existingUser._id });
-            await HabitLog.deleteMany({ user: existingUser._id });
-            await User.deleteOne({ _id: existingUser._id });
-            console.log('Cleaned up existing testuser');
+        // nuke old data if it exists
+        const oldUser = await User.findOne({ username: usr });
+        if (oldUser) {
+            console.log('Found old user, cleaning up...');
+            await Habit.deleteMany({ user: oldUser._id });
+            await Routine.deleteMany({ user: oldUser._id });
+            await HabitLog.deleteMany({ user: oldUser._id });
+            await User.deleteOne({ _id: oldUser._id });
         }
 
-        // 1. Create User
-        const user = new User({ username, password });
-        await user.save();
-        console.log(`User created: ${username} / ${password}`);
+        const newUser = new User({ username: usr, password: pwd });
+        await newUser.save();
+        console.log('Created user:', usr);
 
-        // 2. Create Habits
-        const habits = [
-            { name: 'Meditation', category: 'Health', targetType: 'time', targetValue: 15 },
-            { name: 'Code Practice', category: 'Work', targetType: 'time', targetValue: 60 },
-            { name: 'Journaling', category: 'Personal', targetType: 'count', targetValue: 1 }
-        ];
+        // add some habits
+        const h1 = await new Habit({ user: newUser._id, name: 'Meditation', category: 'Health', targetType: 'time', targetValue: 15 }).save();
+        const h2 = await new Habit({ user: newUser._id, name: 'Code Practice', category: 'Work', targetType: 'time', targetValue: 60 }).save();
+        const h3 = await new Habit({ user: newUser._id, name: 'Journaling', category: 'Personal', targetType: 'count', targetValue: 1 }).save();
 
-        const createdHabits = [];
-        for (const h of habits) {
-            const habit = new Habit({ ...h, user: user._id });
-            await habit.save();
-            createdHabits.push(habit);
-        }
-
-        // 3. Generate Random History (Last 60 days)
-        const today = new Date();
+        // fake history
         const logs = [];
+        const now = new Date();
 
-        for (let i = 60; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
+        // go back 60 days
+        for (let i = 0; i < 60; i++) {
+            const logDate = new Date(now);
+            logDate.setDate(logDate.getDate() - i);
+            const dStr = logDate.toISOString().split('T')[0];
 
-            // Meditation: Random gaps
-            if (Math.random() > 0.4) {
+            // random completion
+            if (Math.random() > 0.5) {
                 logs.push({
-                    user: user._id,
-                    habit: createdHabits[0]._id,
-                    date: dateStr,
+                    user: newUser._id,
+                    habit: h1._id,
+                    date: dStr,
                     completed: true,
                     progress: 15
                 });
             }
 
-            // Code Practice: Consistent
-            if (Math.random() > 0.2) {
+            if (Math.random() > 0.3) {
                 logs.push({
-                    user: user._id,
-                    habit: createdHabits[1]._id,
-                    date: dateStr,
+                    user: newUser._id,
+                    habit: h2._id,
+                    date: dStr,
                     completed: true,
                     progress: 60
                 });
@@ -78,14 +68,14 @@ const createTestUser = async () => {
         }
 
         await HabitLog.insertMany(logs);
-        console.log(`Generated ${logs.length} logs for testuser`);
+        console.log('Added logs');
 
         console.log('Done');
         process.exit(0);
-    } catch (err) {
-        console.error(err);
+    } catch (e) {
+        console.log(e);
         process.exit(1);
     }
 };
 
-createTestUser();
+run();

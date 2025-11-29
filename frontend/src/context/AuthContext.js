@@ -5,75 +5,85 @@ import client from '../api/client';
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [userData, setUserData] = useState(null);
+    const [authToken, setAuthToken] = useState(null);
+    const [isAppReady, setIsAppReady] = useState(false);
 
+    // check if user is logged in
     useEffect(() => {
-        loadUser();
+        const init = async () => {
+            try {
+                const t = await AsyncStorage.getItem('token');
+                const u = await AsyncStorage.getItem('user');
+
+                if (t && u) {
+                    // console.log('Found user session');
+                    setAuthToken(t);
+                    setUserData(JSON.parse(u));
+                }
+            } catch (e) {
+                console.warn('Auth init error', e);
+            } finally {
+                setIsAppReady(true);
+            }
+        };
+        init();
     }, []);
 
-    const loadUser = async () => {
+    const login = async (username, password) => {
         try {
-            const storedToken = await AsyncStorage.getItem('token');
-            const storedUser = await AsyncStorage.getItem('user');
+            const response = await client.post('/auth/signin', { username, password });
 
-            if (storedToken && storedUser) {
-                setToken(storedToken);
-                setUser(JSON.parse(storedUser));
-            }
-        } catch (e) {
-            console.log('Failed to load user', e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+            const { token, user } = response.data;
 
-    const signIn = async (username, password) => {
-        try {
-            const res = await client.post('/auth/signin', { username, password });
-            const { token, user } = res.data;
+            setAuthToken(token);
+            setUserData(user);
 
-            setToken(token);
-            setUser(user);
+            // save to storage
             await AsyncStorage.setItem('token', token);
             await AsyncStorage.setItem('user', JSON.stringify(user));
-            return true;
-        } catch (e) {
-            console.log('Sign in error', e);
-            throw e;
+        } catch (err) {
+            console.warn('Login error', err.response?.data || err.message || err);
+            throw err;
         }
     };
 
-    const signUp = async (username, password) => {
+    const register = async (username, password) => {
         try {
-            const res = await client.post('/auth/signup', { username, password });
-            const { token, user } = res.data;
+            const response = await client.post('/auth/signup', { username, password });
 
-            setToken(token);
-            setUser(user);
+            const { token, user } = response.data;
+
+            setAuthToken(token);
+            setUserData(user);
+
             await AsyncStorage.setItem('token', token);
             await AsyncStorage.setItem('user', JSON.stringify(user));
-            return true;
-        } catch (e) {
-            console.log('Sign up error', e);
-            throw e;
+        } catch (err) {
+            console.warn('Signup error', err.response?.data || err.message || err);
+            throw err;
         }
     };
 
-    const signOut = async () => {
+    const logout = async () => {
         try {
-            await AsyncStorage.removeItem('token');
-            await AsyncStorage.removeItem('user');
-            setToken(null);
-            setUser(null);
+            await AsyncStorage.clear(); // clear everything
+            setUserData(null);
+            setAuthToken(null);
         } catch (e) {
-            console.log('Sign out error', e);
+            console.log('Logout error', e);
         }
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, isLoading, signIn, signUp, signOut }}>
+        <AuthContext.Provider value={{
+            user: userData,
+            token: authToken,
+            loading: !isAppReady,
+            signIn: login,
+            signUp: register,
+            signOut: logout
+        }}>
             {children}
         </AuthContext.Provider>
     );

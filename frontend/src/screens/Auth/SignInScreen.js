@@ -1,67 +1,69 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 
 const SignInScreen = ({ navigation }) => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [usr, setUsr] = useState('');
+    const [pwd, setPwd] = useState('');
+    const [busy, setBusy] = useState(false);
 
     const { signIn } = useAuth();
     const { theme } = useTheme();
 
-    const handleSignIn = async () => {
-        if (!username || !password) {
-            setError('Please fill in all fields');
+    const submit = async () => {
+        if (!usr || !pwd) {
+            Alert.alert('Error', 'Please fill in all fields');
             return;
         }
 
-        setLoading(true);
-        setError('');
+        setBusy(true);
 
         try {
-            await signIn(username, password);
+            // console.log('logging in...');
+            await signIn(usr, pwd);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to sign in');
+            console.log(err);
+            Alert.alert('Login Failed', err.response?.data?.message || 'Check your credentials');
         } finally {
-            setLoading(false);
+            setBusy(false);
         }
     };
 
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[styles.container, { backgroundColor: theme.background }]}
+            style={{ flex: 1, backgroundColor: theme.background }}
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View style={styles.inner}>
-                    <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
-                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Sign in to continue</Text>
-
-                    {error ? <Text style={[styles.error, { color: theme.error }]}>{error}</Text> : null}
+                <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+                    <Text style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 10, color: theme.text }}>
+                        Welcome Back
+                    </Text>
+                    <Text style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 30 }}>
+                        Sign in to continue
+                    </Text>
 
                     <Input
                         label="Username"
-                        value={username}
-                        onChangeText={setUsername}
+                        value={usr}
+                        onChangeText={setUsr}
                         autoCapitalize="none"
                     />
 
                     <Input
                         label="Password"
-                        value={password}
-                        onChangeText={setPassword}
+                        value={pwd}
+                        onChangeText={setPwd}
                         secureTextEntry
                     />
 
                     <Button
                         title="Sign In"
-                        onPress={handleSignIn}
-                        loading={loading}
+                        onPress={submit}
+                        loading={busy}
                         style={{ marginTop: 20 }}
                     />
 
@@ -76,29 +78,5 @@ const SignInScreen = ({ navigation }) => {
         </KeyboardAvoidingView>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    inner: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 24,
-    },
-    title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    subtitle: {
-        fontSize: 16,
-        marginBottom: 32,
-    },
-    error: {
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-});
 
 export default SignInScreen;
