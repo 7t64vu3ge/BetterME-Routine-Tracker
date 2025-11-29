@@ -1,83 +1,40 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import client from '../api/client';
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { useColorScheme, View } from "react-native"; // View unused
+import { lightTheme, darkTheme } from "../utils/theme";
 
-const AuthContext = createContext();
+const ThemeContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-    const [userData, setUserData] = useState(null);
-    const [authToken, setAuthToken] = useState(null);
-    const [isAppReady, setIsAppReady] = useState(false);
+export const ThemeProvider = ({ children }) => {
+  // const sysScheme = useColorScheme();
+  // defaulting to light for now, maybe change later
+  const [mode, setMode] = useState("light");
 
-    // check if user is logged in
-    useEffect(() => {
-        const init = async () => {
-            try {
-                const t = await AsyncStorage.getItem('token');
-                const u = await AsyncStorage.getItem('user');
+  useEffect(() => {
+    // console.log('Theme provider mounted');
+    // TODO: check system preference
+  }, []);
 
-                if (t && u) {
-                    // console.log('Found user session');
-                    setAuthToken(t);
-                    setUserData(JSON.parse(u));
-                }
-            } catch (e) {
-                console.warn('Auth init error', e);
-            } finally {
-                setIsAppReady(true);
-            }
-        };
-        init();
-    }, []);
+  const switchTheme = () => {
+    setMode((prev) => (prev === "light" ? "dark" : "light"));
+    // console.log('Theme switched to', mode === 'light' ? 'dark' : 'light');
+  };
 
-    const login = async (username, password) => {
-        // console.log('Logging in:', username);
-        const response = await client.post('/auth/signin', { username, password });
+  const theme = mode === "dark" ? darkTheme : lightTheme;
 
-        const { token, user } = response.data;
-
-        setAuthToken(token);
-        setUserData(user);
-
-        // save to storage
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-    };
-
-    const register = async (username, password) => {
-        const response = await client.post('/auth/signup', { username, password });
-
-        const { token, user } = response.data;
-
-        setAuthToken(token);
-        setUserData(user);
-
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-    };
-
-    const logout = async () => {
-        try {
-            await AsyncStorage.clear(); // clear everything
-            setUserData(null);
-            setAuthToken(null);
-        } catch (e) {
-            console.log('Logout error', e);
-        }
-    };
-
-    return (
-        <AuthContext.Provider value={{
-            user: userData,
-            token: authToken,
-            loading: !isAppReady,
-            signIn: login,
-            signUp: register,
-            signOut: logout
-        }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  return (
+    <ThemeContext.Provider
+      value={{ theme, isDark: mode === "dark", toggleTheme: switchTheme }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  );
 };
 
-export const useAuth = () => useContext(AuthContext);
+// custom hook
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
+};
